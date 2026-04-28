@@ -1,5 +1,8 @@
 # paste-shots
 
+<!-- demo GIF: record a short clip of the tray icon → paste into Claude Code / Teams, then replace the line below -->
+![paste-shots demo](docs/demo.gif)
+
 A utility that lets you batch multiple screenshots and paste them into
 any app in one action — terminal AI tools like
 [Claude Code](https://claude.ai/code) and [OpenCode](https://opencode.ai),
