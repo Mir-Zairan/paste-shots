@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "paste-shots"
+version = "0.1.0"
+description = "Batch screenshots into a single Claude Code paste"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    # GTK / AppIndicator / Gio bindings — installed via apt on Ubuntu
+    # (python3-gi, gir1.2-gtk-3.0, gir1.2-ayatanaappindicator3-0.1) but
+    # listed here so `pip install .` is at least syntactically correct.
+    "PyGObject",
+]
+
+[project.scripts]
+paste-shots      = "paste_shots.cli:main_entry"
+paste-shots-tray = "paste_shots.tray_app:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

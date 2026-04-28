@@ -1,0 +1,7 @@
+{
+  "uuid": "paste-shots@zaiarn",
+  "name": "paste-shots",
+  "description": "Focus-lock DBus service and optional floating widget for the paste-shots tool.",
+  "shell-version": ["45", "46", "47", "48", "49", "50"],
+  "url": "https://github.com/paste-shots/paste-shots"
+}

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# paste-shots-tray — system tray icon for paste-shots.
+LIB_DIR="${PASTE_SHOTS_LIB_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../src" && pwd)}"
+exec env PYTHONPATH="$LIB_DIR${PYTHONPATH:+:$PYTHONPATH}" python3 -m paste_shots.tray_app "$@"

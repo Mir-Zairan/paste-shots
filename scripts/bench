@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+"""Reproducible benchmark harness for paste-shots.
+
+Reports:
+  - Tray process resident memory, threads, FDs (if a tray is running)
+  - Microbench timings of the pure-logic hot paths over varying corpus sizes
+  - Cold-import cost (CLI startup floor)
+  - Real-screenshot clipboard round-trip (skipped if no clipboard tool)
+
+Usage:
+    scripts/bench
+    scripts/bench --no-clipboard   # skip the real wl-copy / xclip path
+
+The microbenches use a tmp watch dir so they don't disturb the user's
+real screenshot folder or running tray.
+"""
+import argparse
+import os
+import statistics
+import subprocess
+import sys
+import tempfile
+import time
+from pathlib import Path
+
+# Snapshot the real $HOME up front. The microbench fixture mutates HOME to
+# isolate from the user's settings, but the clipboard round-trip needs the
+# real screenshots folder.
+_REAL_HOME = Path(os.environ.get('HOME', str(Path.home())))
+
+
+def _samples_table(samples_ns: list[int]) -> dict:
+    samples_ns.sort()
+    n = len(samples_ns)
+    return {
+        'p50': samples_ns[n // 2],
+        'p95': samples_ns[int(n * 0.95)],
+        'p99': samples_ns[min(int(n * 0.99), n - 1)],
+        'mean': sum(samples_ns) / n,
+    }
+
+
+def _bench(fn, repeat: int = 200, warmup: int = 5) -> dict:
+    for _ in range(warmup):
+        fn()
+    samples = []
+    for _ in range(repeat):
+        t = time.perf_counter_ns()
+        fn()
+        samples.append(time.perf_counter_ns() - t)
+    return _samples_table(samples)
+
+
+def _row(label: str, t: dict, unit: str = 'µs') -> None:
+    div = 1_000 if unit == 'µs' else 1_000_000
+    print(f'{label:<55} {t["p50"]/div:>9.1f} {t["p95"]/div:>9.1f} '
+          f'{t["p99"]/div:>9.1f} {t["mean"]/div:>9.1f}   ({unit})')
+
+
+def profile_running_tray() -> None:
+    print('=== Running tray (live process) ===')
+    try:
+        out = subprocess.check_output(
+            ['pgrep', '-f', 'paste_shots.tray_app|tray_app.py'],
+            text=True,
+        ).strip().splitlines()
+    except subprocess.CalledProcessError:
+        print('  (no tray running — start `paste-shots-tray` to capture this)')
+        print()
+        return
+    pid = int(out[0])
+    status = Path(f'/proc/{pid}/status').read_text()
+    fields = {}
+    for line in status.splitlines():
+        if ':' in line:
+            k, v = line.split(':', 1)
+            fields[k.strip()] = v.strip()
+    fd_count = len(list(Path(f'/proc/{pid}/fd').iterdir()))
+
+    # 5-second CPU sample.
+    cpu_samples = []
+    for _ in range(5):
+        time.sleep(1)
+        ps = subprocess.check_output(
+            ['ps', '-p', str(pid), '-o', '%cpu=', '--no-headers'],
+            text=True,
+        ).strip()
+        cpu_samples.append(float(ps))
+
+    print(f'  PID:       {pid}')
+    print(f'  Threads:   {fields.get("Threads")}')
+    print(f'  VmRSS:     {fields.get("VmRSS")}')
+    print(f'  VmHWM:     {fields.get("VmHWM")}    (peak resident)')
+    print(f'  RssAnon:   {fields.get("RssAnon")}')
+    print(f'  VmSwap:    {fields.get("VmSwap")}')
+    print(f'  Open FDs:  {fd_count}')
+    print(f'  Idle CPU:  {statistics.mean(cpu_samples):.2f}% mean over 5s '
+          f'(samples: {cpu_samples})')
+
+    rollup = Path(f'/proc/{pid}/smaps_rollup')
+    if rollup.exists():
+        for line in rollup.read_text().splitlines():
+            if line.startswith('Pss:'):
+                print(f'  PSS:       {line.split(":", 1)[1].strip()}    '
+                      f'(proportional set size — better than RSS for shared pages)')
+                break
+    print()
+
+
+def microbench_finders() -> None:
+    print('=== Microbench: finders ===')
+    print(f'{"benchmark":<55} {"p50":>9} {"p95":>9} {"p99":>9} {"mean":>9}')
+    print('-' * 100)
+
+    tmp = Path(tempfile.mkdtemp(prefix='paste-shots-bench-'))
+    watch = tmp / 'screenshots'
+    watch.mkdir()
+    os.environ['XDG_DATA_HOME'] = str(tmp / 'xdg')
+    os.environ['HOME'] = str(tmp)
+    os.environ['PASTE_SHOTS_WATCH_DIR'] = str(watch)
+
+    # Late import so the env vars take effect.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
+    from paste_shots import config, finders, window
+    config.DATA_DIR = tmp / 'xdg' / 'paste-shots'
+    config.DATA_DIR.mkdir(parents=True, exist_ok=True)
+    config.MARKER_FILE = config.DATA_DIR / 'last-paste'
+    config.CONFIG_FILE = tmp / 'cfg' / 'settings.json'
+    config.load_config()
+
+    def make_files(n: int) -> None:
+        for f in watch.glob('*.png'):
+            f.unlink()
+        for i in range(n):
+            (watch / f'shot-{i:04}.png').write_bytes(
+                b'\x89PNG\r\n\x1a\n' + b'\x00' * 256
+            )
+
+    for n in (1, 10, 100, 1000):
+        make_files(n)
+        _row(f'screenshots_in (n={n})', _bench(lambda: finders.screenshots_in(watch)))
+        _row(f'find_since_marker (n={n}, no marker)', _bench(finders.find_since_marker))
+        config.MARKER_FILE.touch()
+        _row(f'find_since_marker (n={n}, marker)', _bench(finders.find_since_marker))
+        _row(f'find_last_n(3) (n={n})', _bench(lambda: finders.find_last_n(3)))
+        config.MARKER_FILE.unlink()
+        print()
+
+    classes = ['alacritty', 'gnome-terminal-server', 'jetbrains-phpstorm-2024.3',
+               'firefox', 'org.gnome.Nautilus', '', 'code', 'kitty']
+    _row('is_paste_target ("alacritty")',
+         _bench(lambda: window.is_paste_target('alacritty')))
+    _row('is_paste_target ("firefox")',
+         _bench(lambda: window.is_paste_target('firefox')))
+    _row('is_paste_target (8 classes)',
+         _bench(lambda: [window.is_paste_target(c) for c in classes]))
+
+    print()
+    print('=== Cold import (CLI startup floor) ===')
+
+    def cold_import() -> None:
+        for m in list(sys.modules):
+            if m.startswith('paste_shots'):
+                del sys.modules[m]
+        import paste_shots.cli  # noqa: F401
+
+    print(f'{"benchmark":<55} {"p50":>9} {"p95":>9} {"p99":>9} {"mean":>9}')
+    print('-' * 100)
+    _row('paste_shots.cli (cold import)',
+         _bench(cold_import, repeat=20, warmup=2), unit='ms')
+    print()
+
+
+def bench_clipboard(disabled: bool) -> None:
+    if disabled:
+        print('=== Clipboard round-trip: skipped (--no-clipboard) ===')
+        return
+    print('=== Clipboard round-trip (real screenshot) ===')
+    try:
+        from paste_shots import clipboard
+    except ImportError:
+        print('  (paste_shots not on path)')
+        return
+    candidates = sorted((_REAL_HOME / 'Pictures' / 'Screenshots').glob('*.png'))
+    if not candidates:
+        print('  (no screenshots found in ~/Pictures/Screenshots; skipping)')
+        return
+    target = candidates[0]
+    print(f'  target: {target.name}  ({target.stat().st_size/1024:.0f} KB)')
+
+    samples = []
+    for _ in range(10):
+        t = time.perf_counter_ns()
+        try:
+            clipboard.copy_to_clipboard(target)
+            samples.append(time.perf_counter_ns() - t)
+        except Exception as e:
+            print(f'  copy failed: {e}')
+            return
+    t = _samples_table(samples)
+    print(f'  copy_to_clipboard: p50={t["p50"]/1e6:.1f} ms  '
+          f'p95={t["p95"]/1e6:.1f} ms  mean={t["mean"]/1e6:.1f} ms')
+
+    samples = []
+    for _ in range(50):
+        t0 = time.perf_counter_ns()
+        clipboard.clipboard_has_image()
+        samples.append(time.perf_counter_ns() - t0)
+    t = _samples_table(samples)
+    print(f'  clipboard_has_image: p50={t["p50"]/1e6:.1f} ms  '
+          f'p95={t["p95"]/1e6:.1f} ms  mean={t["mean"]/1e6:.1f} ms')
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--no-clipboard', action='store_true',
+                        help='Skip the real clipboard round-trip')
+    args = parser.parse_args()
+    profile_running_tray()
+    microbench_finders()
+    bench_clipboard(args.no_clipboard)
+
+
+if __name__ == '__main__':
+    main()

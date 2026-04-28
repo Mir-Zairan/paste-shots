@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# paste-shots — paste recent screenshots into the focused terminal
+#
+# Usage:
+#   paste-shots              # paste all screenshots since last paste
+#   paste-shots N            # paste the last N screenshots
+#   paste-shots --pick       # interactive picker
+#
+# Runs the package via `python3 -m paste_shots.cli`. PYTHONPATH points at
+# the source root so the package resolves without needing pip install. If
+# the package was installed via pyproject.toml's console_scripts you can
+# bypass this shim and call `paste-shots` directly.
+LIB_DIR="${PASTE_SHOTS_LIB_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../src" && pwd)}"
+exec env PYTHONPATH="$LIB_DIR${PYTHONPATH:+:$PYTHONPATH}" python3 -m paste_shots.cli "$@"
