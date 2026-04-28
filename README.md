@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 <!-- demo GIF: record a short clip of the tray icon → paste into Claude Code / Teams, then replace the line below -->
-![paste-shots demo](docs/demo.gif)
+<img width="1102" height="648" alt="paste-shots-demo" src="https://github.com/user-attachments/assets/ccfed55c-8a1a-4fcd-898a-907a2d886568" />
 
 A utility that lets you batch multiple screenshots and paste them into
 any app in one action — terminal AI tools like
