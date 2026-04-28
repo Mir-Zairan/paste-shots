@@ -1,10 +1,11 @@
 # paste-shots
 
-A utility that lets you take multiple screenshots and paste them straight
-into [Claude Code](https://claude.ai/code), [OpenCode](https://opencode.ai),
-or any terminal with one action. The niche it exists for: **batching
-several screenshots into a single AI turn**, which the system clipboard
-alone can't do.
+A utility that lets you batch multiple screenshots and paste them into
+any app in one action — terminal AI tools like
+[Claude Code](https://claude.ai/code) and [OpenCode](https://opencode.ai),
+chat apps like Teams and Slack, issue trackers, email, and anywhere else
+that accepts image paste. The niche it fills: **sending several screenshots
+in a single action**, which the system clipboard alone can't do.
 
 Runs as a system-tray icon with an optional **floating draggable widget**
 (via a small bundled GNOME Shell extension). No cloud, no background
