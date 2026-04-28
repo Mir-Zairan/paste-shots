@@ -1,9 +1,10 @@
 # paste-shots
 
 A utility that lets you take multiple screenshots and paste them straight
-into [Claude Code](https://claude.ai/code) (or any terminal) with one
-action. The niche it exists for: **batching several screenshots into a
-single Claude turn**, which the system clipboard alone can't do.
+into [Claude Code](https://claude.ai/code), [OpenCode](https://opencode.ai),
+or any terminal with one action. The niche it exists for: **batching
+several screenshots into a single AI turn**, which the system clipboard
+alone can't do.
 
 Runs as a system-tray icon with an optional **floating draggable widget**
 (via a small bundled GNOME Shell extension). No cloud, no background
@@ -188,10 +189,10 @@ aggressive the guard is:
 
 | `paste_mode` | Accepts | Use case |
 |---|---|---|
-| `terminal_only` *(default)* | Standalone terminal emulators only. Other apps are accepted only if their WM\_CLASS is in **Custom paste targets**. | The intended path: paste screenshots into Claude Code or any other terminal-driven assistant. |
-| `any` | **Anything that has keyboard focus**, including IDEs, chat apps, browsers, image-aware text fields, document editors. | Unlocks paste-shots for general use beyond Claude Code — see below. |
+| `terminal_only` *(default)* | Standalone terminal emulators only. Other apps are accepted only if their WM\_CLASS is in **Custom paste targets**. | The intended path: paste screenshots into Claude Code, OpenCode, or any other terminal-driven assistant. |
+| `any` | **Anything that has keyboard focus**, including IDEs, chat apps, browsers, image-aware text fields, document editors. | Unlocks paste-shots for general use beyond terminal AI tools — see below. |
 
-### "Anywhere" mode — pasting outside Claude Code
+### "Anywhere" mode — pasting outside terminal AI tools
 
 Set **paste_mode = any** (Settings → Paste target → "Anywhere", or
 `paste-shots --set paste_mode=any`) to bypass the allowlist entirely. Any
