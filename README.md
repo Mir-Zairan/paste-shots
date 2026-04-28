@@ -1,5 +1,8 @@
 # paste-shots
 
+[![PyPI](https://img.shields.io/pypi/v/paste-shots)](https://pypi.org/project/paste-shots/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 <!-- demo GIF: record a short clip of the tray icon → paste into Claude Code / Teams, then replace the line below -->
 ![paste-shots demo](docs/demo.gif)
 
@@ -66,11 +69,24 @@ Ubuntu also needs to be enabled for Wayland keystroke injection to work.
 
 ## Installation
 
+### Recommended — installer script (Ubuntu)
+
 ```bash
 git clone https://github.com/Mir-Zairan/paste-shots.git
 cd paste-shots
 ./install.sh
 ```
+
+### Via pip (any distro — system deps required)
+
+```bash
+pip install paste-shots
+```
+
+> The pip package installs the Python code and CLI entry points. You still need
+> the system dependencies (GTK, clipboard, keystroke tools) listed in the
+> **Other distributions** table above, and the GNOME Shell extension won't be
+> installed automatically — use the installer script on Ubuntu for the full setup.
 
 The installer takes care of:
 
